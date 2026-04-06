@@ -135,7 +135,7 @@ export default function SettingsPage() {
           </button>
         </div>
 
-        {testResult && (
+        {testResult ? (
           <p
             className={`text-sm ${
               testResult.includes("works")
@@ -145,7 +145,7 @@ export default function SettingsPage() {
           >
             {testResult}
           </p>
-        )}
+        ) : null}
       </div>
     </div>
   );

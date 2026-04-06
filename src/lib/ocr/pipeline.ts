@@ -32,9 +32,9 @@ export async function runOcrPipeline(
 ): Promise<OcrResult> {
   const buffer = await file.arrayBuffer();
 
-  // ── Check IndexedDB cache first ────────────────────────────────────────────
+  // ── Check cache and load settings in parallel ─────────────────────────────
   onProgress?.({ stage: 'cache' });
-  const cached = await getCachedOcr(buffer);
+  const [cached, settings] = await Promise.all([getCachedOcr(buffer), getSettings()]);
   if (cached) {
     return {
       markdown: cached.markdown,
@@ -50,8 +50,6 @@ export async function runOcrPipeline(
   if (!isPdf && !isImage) {
     throw new Error(`Unsupported file type: ${file.type || file.name}`);
   }
-
-  const settings = await getSettings();
   let rawText = '';
   let method: OcrMethod = 'pdfjs';
 

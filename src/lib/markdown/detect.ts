@@ -24,16 +24,16 @@ function extractText(node: PhrasingContent): string {
 
 function extractBlockText(nodes: RootContent[]): string {
   return nodes
-    .map((node) => {
+    .flatMap((node) => {
       if (node.type === 'paragraph') {
-        return (node as Paragraph).children.map(extractText).join('');
+        return [(node as Paragraph).children.map(extractText).join('')];
       }
       if (node.type === 'blockquote') {
-        return extractBlockText((node as Blockquote).children as RootContent[]);
+        const inner = extractBlockText((node as Blockquote).children as RootContent[]);
+        return inner ? [inner] : [];
       }
-      return '';
+      return [];
     })
-    .filter(Boolean)
     .join('\n');
 }
 

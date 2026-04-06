@@ -15,36 +15,34 @@ export function computeScore(
   questions: Question[],
   answers: Record<string, UserAnswer>
 ): ScoreBreakdown {
-  const mcqQuestions = questions.filter((q) => q.type === 'mcq');
-  const shortQuestions = questions.filter((q) => q.type === 'short');
-  const longQuestions = questions.filter((q) => q.type === 'long');
+  // Single pass: collect all per-type totals and scores
+  let mcqTotal = 0, mcqCorrect = 0;
+  const shortScores: number[] = [];
+  const longScores: number[] = [];
 
-  const mcqCorrect = mcqQuestions.filter(
-    (q) => answers[q.id]?.isCorrect === true
-  ).length;
+  for (const q of questions) {
+    const ans = answers[q.id];
+    if (q.type === 'mcq') {
+      mcqTotal++;
+      if (ans?.isCorrect === true) mcqCorrect++;
+    } else if (q.type === 'short') {
+      if (ans?.aiScore !== undefined) shortScores.push(ans.aiScore);
+    } else {
+      if (ans?.aiScore !== undefined) longScores.push(ans.aiScore);
+    }
+  }
 
-  const shortScores = shortQuestions
-    .map((q) => answers[q.id]?.aiScore)
-    .filter((s): s is number => s !== undefined);
+  const sumShort = shortScores.reduce((a, b) => a + b, 0);
+  const sumLong = longScores.reduce((a, b) => a + b, 0);
+  const avgShort = shortScores.length > 0 ? sumShort / shortScores.length : 0;
+  const avgLong = longScores.length > 0 ? sumLong / longScores.length : 0;
 
-  const longScores = longQuestions
-    .map((q) => answers[q.id]?.aiScore)
-    .filter((s): s is number => s !== undefined);
-
-  const avgShort = shortScores.length > 0
-    ? shortScores.reduce((a, b) => a + b, 0) / shortScores.length
-    : 0;
-
-  const avgLong = longScores.length > 0
-    ? longScores.reduce((a, b) => a + b, 0) / longScores.length
-    : 0;
-
-  // Overall: MCQ as percentage points + written answer avg scores
   const totalQuestions = questions.length;
-  const mcqPoints = mcqCorrect;
-  const shortPoints = shortScores.reduce((a, b) => a + b / 100, 0);
-  const longPoints = longScores.reduce((a, b) => a + b / 100, 0);
-  const totalCorrect = mcqPoints + shortPoints + longPoints;
+  const totalCorrect =
+    mcqCorrect +
+    shortScores.reduce((a, b) => a + b / 100, 0) +
+    longScores.reduce((a, b) => a + b / 100, 0);
+
   const percentage = totalQuestions > 0
     ? Math.round((totalCorrect / totalQuestions) * 100)
     : 0;
@@ -55,18 +53,16 @@ export function computeScore(
     percentage,
     byType: {
       mcq: {
-        total: mcqQuestions.length,
+        total: mcqTotal,
         correct: mcqCorrect,
-        percentage: mcqQuestions.length > 0
-          ? Math.round((mcqCorrect / mcqQuestions.length) * 100)
-          : 0,
+        percentage: mcqTotal > 0 ? Math.round((mcqCorrect / mcqTotal) * 100) : 0,
       },
       short: {
-        total: shortQuestions.length,
+        total: shortScores.length,
         avgScore: Math.round(avgShort),
       },
       long: {
-        total: longQuestions.length,
+        total: longScores.length,
         avgScore: Math.round(avgLong),
       },
     },

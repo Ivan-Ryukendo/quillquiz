@@ -252,12 +252,12 @@ export default function HomePage() {
       </p>
 
       {/* Error Message */}
-      {error && (
+      {error ? (
         <div className="mt-6 px-4 py-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg text-sm max-w-lg text-center flex items-center gap-2 animate-in slide-in-from-top-2">
           <span className="w-1.5 h-1.5 rounded-full bg-red-600 dark:bg-red-400 shrink-0" />
           {error}
         </div>
-      )}
+      ) : null}
 
       {/* Action Buttons */}
       <div className="flex flex-col sm:flex-row items-center gap-4 mt-10">

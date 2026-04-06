@@ -1,5 +1,3 @@
-'use client';
-
 /**
  * Tier 3: OCR via Gemini Vision — high quality, uses the user's Gemini API key.
  * Sends image/PDF pages as base64 inline data to gemini-2.0-flash.

@@ -1,5 +1,3 @@
-'use client';
-
 /**
  * Tier 2: OCR via Tesseract.js — runs in-browser via WASM, no API key needed.
  * Used for images and scanned PDFs when PDF.js finds no text.

@@ -1,6 +1,11 @@
 {
   "version": 1,
   "skills": {
+    "autoship": {
+      "source": "vercel-labs/autoship",
+      "sourceType": "github",
+      "computedHash": "a813370b550f6b2a7c0dceba1c2f3c06978b10e4bbfbcf39421220d8140ab220"
+    },
     "grill-me": {
       "source": "mattpocock/skills",
       "sourceType": "github",
@@ -11,6 +16,11 @@
       "sourceType": "github",
       "computedHash": "92ffd85a803661d754221f7aba260ee2065d3402eadf78872e227146fe1d6fbf"
     },
+    "next-best-practices": {
+      "source": "vercel-labs/next-skills",
+      "sourceType": "github",
+      "computedHash": "db85045827ebeb83ac8dbc992b69188755eeb74dcf01cbf5e694d58aa494a106"
+    },
     "prd-to-issues": {
       "source": "mattpocock/skills",
       "sourceType": "github",
@@ -20,6 +30,31 @@
       "source": "mattpocock/skills",
       "sourceType": "github",
       "computedHash": "e4453d2f51a009f6b49876cc4d46ce452194c54ea931d4a552a0eb0e9dd24c27"
+    },
+    "vercel-cli": {
+      "source": "vercel/vercel",
+      "sourceType": "github",
+      "computedHash": "e623beeae950a800a43191790dc6ef613381afb2fb5846312b13a9585424a5a3"
+    },
+    "vercel-composition-patterns": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "github",
+      "computedHash": "575757e3e25761c8c562d6e395d29f0b76c98b1273c0bd72d88e6ab1bc9c7d42"
+    },
+    "vercel-react-best-practices": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "github",
+      "computedHash": "43ca6c197f8ec13055079da7053232d477068b03ca443f9ac1bc819b95cdd432"
+    },
+    "vercel-react-native-skills": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "github",
+      "computedHash": "41d24eafa7c3d82e270439808f7cfbc4d51aeb2d14f2809a2267c16275784d06"
+    },
+    "workflow": {
+      "source": "vercel/workflow",
+      "sourceType": "github",
+      "computedHash": "0d31efa78ad6a2e76d8e6089bf5e820a155976b76f8b82b64391344ad2ae310b"
     },
     "write-a-prd": {
       "source": "mattpocock/skills",

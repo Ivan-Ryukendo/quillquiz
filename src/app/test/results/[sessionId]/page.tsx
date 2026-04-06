@@ -6,7 +6,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { getSession } from "@/lib/storage/session-store";
 import { computeScore, type ScoreBreakdown } from "@/lib/test-engine/scoring";
-import type { TestSession, Question, UserAnswer } from "@/lib/markdown/types";
+import type { TestSession, UserAnswer } from "@/lib/markdown/types";
 
 export default function ResultsPage() {
   const router = useRouter();
@@ -65,12 +65,12 @@ export default function ResultsPage() {
           </div>
           <p className="text-gray-500 text-sm mt-1">
             {score.correct} / {score.total} questions
-            {duration !== null && ` in ${duration} min`}
+            {duration !== null ? ` in ${duration} min` : ""}
           </p>
         </div>
 
         <div className="grid grid-cols-3 gap-4 text-center text-sm">
-          {score.byType.mcq.total > 0 && (
+          {score.byType.mcq.total > 0 ? (
             <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
               <div className="font-medium">MCQ</div>
               <div className="text-gray-500">
@@ -80,8 +80,8 @@ export default function ResultsPage() {
                 {score.byType.mcq.percentage}%
               </div>
             </div>
-          )}
-          {score.byType.short.total > 0 && (
+          ) : null}
+          {score.byType.short.total > 0 ? (
             <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
               <div className="font-medium">Short</div>
               <div className="text-gray-500">
@@ -91,8 +91,8 @@ export default function ResultsPage() {
                 {score.byType.short.total} questions
               </div>
             </div>
-          )}
-          {score.byType.long.total > 0 && (
+          ) : null}
+          {score.byType.long.total > 0 ? (
             <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
               <div className="font-medium">Long</div>
               <div className="text-gray-500">
@@ -102,7 +102,7 @@ export default function ResultsPage() {
                 {score.byType.long.total} questions
               </div>
             </div>
-          )}
+          ) : null}
         </div>
       </div>
 
@@ -134,33 +134,27 @@ export default function ResultsPage() {
                 >
                   {index + 1}
                 </span>
-                <span className="text-sm flex-1 truncate">
-                  {question.text}
-                </span>
+                <span className="text-sm flex-1 truncate">{question.text}</span>
                 <span className="text-xs text-gray-400 uppercase">
                   {question.type}
                 </span>
-                {answer?.aiScore !== undefined && (
+                {answer?.aiScore !== undefined ? (
                   <span className="text-xs text-gray-500">
                     {answer.aiScore}/100
                   </span>
-                )}
-                <span className="text-gray-400">
-                  {isExpanded ? "−" : "+"}
-                </span>
+                ) : null}
+                <span className="text-gray-400">{isExpanded ? "−" : "+"}</span>
               </button>
 
-              {isExpanded && (
+              {isExpanded ? (
                 <div className="px-4 pb-4 border-t border-gray-100 dark:border-gray-800 pt-3 space-y-3">
-                  {/* Question text */}
                   <div className="prose dark:prose-invert text-sm max-w-none">
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>
                       {question.text}
                     </ReactMarkdown>
                   </div>
 
-                  {/* MCQ answer review */}
-                  {question.type === "mcq" && question.options && (
+                  {question.type === "mcq" && question.options ? (
                     <div className="space-y-1">
                       {question.options.map((opt, i) => {
                         const wasSelected = answer?.selectedOptions?.includes(i);
@@ -177,62 +171,53 @@ export default function ResultsPage() {
                           >
                             {wasSelected ? (opt.isCorrect ? "V " : "X ") : "  "}
                             {opt.text}
-                            {opt.isCorrect && " (correct)"}
+                            {opt.isCorrect ? " (correct)" : ""}
                           </div>
                         );
                       })}
                     </div>
-                  )}
+                  ) : null}
 
-                  {/* Text answer review */}
-                  {(question.type === "short" || question.type === "long") && (
+                  {question.type === "short" || question.type === "long" ? (
                     <>
-                      {answer?.textAnswer && (
+                      {answer?.textAnswer ? (
                         <div>
-                          <p className="text-xs text-gray-500 mb-1">
-                            Your answer:
-                          </p>
+                          <p className="text-xs text-gray-500 mb-1">Your answer:</p>
                           <p className="text-sm bg-gray-50 dark:bg-gray-900 p-3 rounded">
                             {answer.textAnswer}
                           </p>
                         </div>
-                      )}
-                      {question.referenceAnswer && (
+                      ) : null}
+                      {question.referenceAnswer ? (
                         <div>
-                          <p className="text-xs text-gray-500 mb-1">
-                            Reference answer:
-                          </p>
+                          <p className="text-xs text-gray-500 mb-1">Reference answer:</p>
                           <p className="text-sm bg-blue-50 dark:bg-blue-950 p-3 rounded">
                             {question.referenceAnswer}
                           </p>
                         </div>
-                      )}
-                      {answer?.aiFeedback && (
+                      ) : null}
+                      {answer?.aiFeedback ? (
                         <div>
-                          <p className="text-xs text-gray-500 mb-1">
-                            AI Feedback:
-                          </p>
+                          <p className="text-xs text-gray-500 mb-1">AI Feedback:</p>
                           <p className="text-sm text-gray-600 dark:text-gray-400">
                             {answer.aiFeedback}
                           </p>
                         </div>
-                      )}
-                      {answer?.keyMissing && answer.keyMissing.length > 0 && (
+                      ) : null}
+                      {answer?.keyMissing && answer.keyMissing.length > 0 ? (
                         <div>
-                          <p className="text-xs text-gray-500 mb-1">
-                            Missed concepts:
-                          </p>
+                          <p className="text-xs text-gray-500 mb-1">Missed concepts:</p>
                           <ul className="text-sm text-gray-500 list-disc ml-4">
                             {answer.keyMissing.map((c, i) => (
                               <li key={i}>{c}</li>
                             ))}
                           </ul>
                         </div>
-                      )}
+                      ) : null}
                     </>
-                  )}
+                  ) : null}
                 </div>
-              )}
+              ) : null}
             </div>
           );
         })}

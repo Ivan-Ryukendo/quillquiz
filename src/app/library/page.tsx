@@ -5,6 +5,17 @@ import { useRouter } from "next/navigation";
 import { getAllQuizFiles, deleteQuizFile } from "@/lib/storage/quiz-store";
 import type { QuizFile } from "@/lib/markdown/types";
 
+// Single pass over questions — extracted outside component so it's not recreated on every render
+function countByType(file: QuizFile) {
+  let mcq = 0, short = 0, long = 0;
+  for (const q of file.questions) {
+    if (q.type === "mcq") mcq++;
+    else if (q.type === "short") short++;
+    else long++;
+  }
+  return { mcq, short, long };
+}
+
 export default function LibraryPage() {
   const router = useRouter();
   const [files, setFiles] = useState<QuizFile[]>([]);
@@ -60,13 +71,6 @@ export default function LibraryPage() {
     );
   }
 
-  const countByType = (file: QuizFile) => {
-    const mcq = file.questions.filter((q) => q.type === "mcq").length;
-    const short = file.questions.filter((q) => q.type === "short").length;
-    const long = file.questions.filter((q) => q.type === "long").length;
-    return { mcq, short, long };
-  };
-
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
@@ -106,20 +110,20 @@ export default function LibraryPage() {
               <div className="flex items-start justify-between">
                 <div>
                   <h3 className="font-medium">
-                    {file.metadata.title || file.filename}
+                    {file.metadata.title ?? file.filename}
                   </h3>
-                  {file.metadata.description && (
+                  {file.metadata.description ? (
                     <p className="text-sm text-gray-500 mt-0.5">
                       {file.metadata.description}
                     </p>
-                  )}
+                  ) : null}
                   <div className="flex gap-3 mt-2 text-xs text-gray-400">
                     <span>{file.questions.length} questions</span>
-                    {counts.mcq > 0 && <span>{counts.mcq} MCQ</span>}
-                    {counts.short > 0 && <span>{counts.short} Short</span>}
-                    {counts.long > 0 && <span>{counts.long} Long</span>}
+                    {counts.mcq > 0 ? <span>{counts.mcq} MCQ</span> : null}
+                    {counts.short > 0 ? <span>{counts.short} Short</span> : null}
+                    {counts.long > 0 ? <span>{counts.long} Long</span> : null}
                   </div>
-                  {file.metadata.tags && file.metadata.tags.length > 0 && (
+                  {file.metadata.tags && file.metadata.tags.length > 0 ? (
                     <div className="flex gap-1.5 mt-2">
                       {file.metadata.tags.map((tag) => (
                         <span
@@ -130,7 +134,7 @@ export default function LibraryPage() {
                         </span>
                       ))}
                     </div>
-                  )}
+                  ) : null}
                 </div>
                 <div className="flex items-center gap-2">
                   <input

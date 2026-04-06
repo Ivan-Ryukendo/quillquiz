@@ -83,7 +83,7 @@ export default function TestPage() {
   };
 
   const handleMcqSelect = (index: number) => {
-    if (feedback) return; // Already answered
+    if (feedback) return;
     const question = currentQuestion!;
     const hasMultipleCorrect =
       question.options!.filter((o) => o.isCorrect).length > 1;
@@ -96,21 +96,17 @@ export default function TestPage() {
         return next;
       });
     } else {
-      // Single-answer: select and check immediately
       const selected = [index];
       const isCorrect = checkMcqAnswer(question, selected);
-
       const answer: UserAnswer = {
         questionId: question.id,
         selectedOptions: selected,
         isCorrect,
         answeredAt: Date.now(),
       };
-
       const updated = { ...session! };
       updated.answers = { ...updated.answers, [question.id]: answer };
       saveAndUpdate(updated);
-
       setSelectedOptions(new Set(selected));
       setFeedback({ isCorrect });
     }
@@ -120,14 +116,12 @@ export default function TestPage() {
     if (!currentQuestion || feedback) return;
     const selected = Array.from(selectedOptions);
     const isCorrect = checkMcqAnswer(currentQuestion, selected);
-
     const answer: UserAnswer = {
       questionId: currentQuestion.id,
       selectedOptions: selected,
       isCorrect,
       answeredAt: Date.now(),
     };
-
     const updated = { ...session! };
     updated.answers = { ...updated.answers, [currentQuestion.id]: answer };
     saveAndUpdate(updated);
@@ -178,7 +172,6 @@ export default function TestPage() {
   const handleNext = () => {
     if (!session) return;
     resetState();
-
     if (session.currentIndex < session.questions.length - 1) {
       const updated = { ...session, currentIndex: session.currentIndex + 1 };
       saveAndUpdate(updated);
@@ -218,16 +211,12 @@ export default function TestPage() {
           <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-xs uppercase">
             {currentQuestion.type}
           </span>
-          {timeLeft !== null && (
-            <span
-              className={`font-mono ${
-                timeLeft < 60 ? "text-red-500" : ""
-              }`}
-            >
+          {timeLeft !== null ? (
+            <span className={`font-mono ${timeLeft < 60 ? "text-red-500" : ""}`}>
               {Math.floor(timeLeft / 60)}:
               {String(timeLeft % 60).padStart(2, "0")}
             </span>
-          )}
+          ) : null}
         </div>
       </div>
 
@@ -248,23 +237,21 @@ export default function TestPage() {
             {currentQuestion.text}
           </ReactMarkdown>
         </div>
-        {currentQuestion.body && (
+        {currentQuestion.body ? (
           <div className="prose dark:prose-invert max-w-none mt-2 text-gray-600 dark:text-gray-400">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>
               {currentQuestion.body}
             </ReactMarkdown>
           </div>
-        )}
+        ) : null}
       </div>
 
       {/* MCQ Options */}
-      {currentQuestion.type === "mcq" && currentQuestion.options && (
+      {currentQuestion.type === "mcq" && currentQuestion.options ? (
         <div className="space-y-2 mb-6">
-          {hasMultipleCorrect && (
-            <p className="text-xs text-gray-400 mb-2">
-              Select all that apply
-            </p>
-          )}
+          {hasMultipleCorrect ? (
+            <p className="text-xs text-gray-400 mb-2">Select all that apply</p>
+          ) : null}
           {currentQuestion.options.map((option, i) => {
             const isSelected = selectedOptions.has(i);
             let bgClass = "border-gray-200 dark:border-gray-700 hover:border-gray-300";
@@ -293,7 +280,7 @@ export default function TestPage() {
             );
           })}
 
-          {hasMultipleCorrect && !feedback && (
+          {hasMultipleCorrect && !feedback ? (
             <button
               onClick={handleMultiMcqCheck}
               disabled={selectedOptions.size === 0}
@@ -301,12 +288,12 @@ export default function TestPage() {
             >
               Check Answer
             </button>
-          )}
+          ) : null}
         </div>
-      )}
+      ) : null}
 
       {/* Text Answer */}
-      {(currentQuestion.type === "short" || currentQuestion.type === "long") && (
+      {currentQuestion.type === "short" || currentQuestion.type === "long" ? (
         <div className="mb-6">
           <textarea
             value={textAnswer}
@@ -320,7 +307,7 @@ export default function TestPage() {
             rows={currentQuestion.type === "short" ? 3 : 8}
             className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-lg text-sm bg-transparent resize-y disabled:opacity-60"
           />
-          {!feedback && (
+          {!feedback ? (
             <button
               onClick={handleTextSubmit}
               disabled={!textAnswer.trim() || checking}
@@ -328,12 +315,12 @@ export default function TestPage() {
             >
               {checking ? "Checking..." : "Submit Answer"}
             </button>
-          )}
+          ) : null}
         </div>
-      )}
+      ) : null}
 
       {/* Feedback */}
-      {feedback && (
+      {feedback ? (
         <div
           className={`p-4 rounded-lg mb-6 ${
             feedback.isCorrect
@@ -343,18 +330,18 @@ export default function TestPage() {
         >
           <p className="font-medium text-sm">
             {feedback.isCorrect ? "Correct!" : "Incorrect"}
-            {feedback.aiScore !== undefined && (
+            {feedback.aiScore !== undefined ? (
               <span className="ml-2 text-gray-600 dark:text-gray-400">
                 Score: {feedback.aiScore}/100
               </span>
-            )}
+            ) : null}
           </p>
-          {feedback.aiFeedback && (
+          {feedback.aiFeedback ? (
             <p className="text-sm mt-1 text-gray-600 dark:text-gray-400">
               {feedback.aiFeedback}
             </p>
-          )}
-          {feedback.keyMissing && feedback.keyMissing.length > 0 && (
+          ) : null}
+          {feedback.keyMissing && feedback.keyMissing.length > 0 ? (
             <div className="mt-2">
               <p className="text-xs text-gray-500">Key concepts missed:</p>
               <ul className="text-xs text-gray-500 list-disc ml-4 mt-0.5">
@@ -363,20 +350,20 @@ export default function TestPage() {
                 ))}
               </ul>
             </div>
-          )}
-          {currentQuestion.referenceAnswer && currentQuestion.type !== "mcq" && (
+          ) : null}
+          {currentQuestion.referenceAnswer && currentQuestion.type !== "mcq" ? (
             <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
               <p className="text-xs text-gray-500 mb-1">Reference answer:</p>
               <p className="text-sm text-gray-600 dark:text-gray-400">
                 {currentQuestion.referenceAnswer}
               </p>
             </div>
-          )}
+          ) : null}
         </div>
-      )}
+      ) : null}
 
       {/* Navigation */}
-      {feedback && (
+      {feedback ? (
         <div className="flex justify-end">
           <button
             onClick={handleNext}
@@ -385,7 +372,7 @@ export default function TestPage() {
             {isLastQuestion ? "Finish Test" : "Next Question"}
           </button>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

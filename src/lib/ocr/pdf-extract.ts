@@ -1,5 +1,3 @@
-'use client';
-
 /**
  * Tier 1: Extract text from PDFs that have a text layer (digital PDFs).
  * Uses PDF.js — runs entirely in the browser, no API key needed.
