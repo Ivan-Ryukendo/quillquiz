@@ -1,21 +1,25 @@
 'use client';
 
 import { getCachedOcr, saveOcrCache } from '../storage/ocr-store';
-import { getSettings } from '../storage/settings-store';
 import { extractPdfText } from './pdf-extract';
 import { ocrImage, ocrScannedPdf } from './tesseract-ocr';
 import { geminiOcrImage, geminiOcrPdf } from './gemini-vision';
+import { convertRawTextToQuizMarkdown } from '../ai/converter';
+import { getSettings } from '../storage/settings-store';
 
 export type OcrMethod = 'pdfjs' | 'tesseract' | 'gemini';
 
 export interface OcrResult {
   markdown: string;
   method: OcrMethod;
+  converted: boolean;
   fromCache: boolean;
 }
 
+export type OcrStage = 'cache' | 'pdfjs' | 'tesseract' | 'gemini' | 'converting';
+
 export interface OcrProgressEvent {
-  stage: 'cache' | 'pdfjs' | 'tesseract' | 'gemini';
+  stage: OcrStage;
   page?: number;
   total?: number;
 }
@@ -28,11 +32,16 @@ export async function runOcrPipeline(
 ): Promise<OcrResult> {
   const buffer = await file.arrayBuffer();
 
-  // Check IndexedDB cache first
+  // ── Check IndexedDB cache first ────────────────────────────────────────────
   onProgress?.({ stage: 'cache' });
   const cached = await getCachedOcr(buffer);
   if (cached) {
-    return { markdown: cached.markdown, method: cached.method, fromCache: true };
+    return {
+      markdown: cached.markdown,
+      method: cached.method,
+      converted: cached.converted,
+      fromCache: true,
+    };
   }
 
   const isPdf = file.type === 'application/pdf' || file.name.endsWith('.pdf');
@@ -43,6 +52,8 @@ export async function runOcrPipeline(
   }
 
   const settings = await getSettings();
+  let rawText = '';
+  let method: OcrMethod = 'pdfjs';
 
   // ── Tier 1: PDF.js (digital PDFs only) ────────────────────────────────────
   if (isPdf) {
@@ -50,17 +61,17 @@ export async function runOcrPipeline(
     try {
       const text = await extractPdfText(buffer.slice(0));
       if (text) {
-        await saveOcrCache(buffer, file.name, text, 'pdfjs');
-        return { markdown: text, method: 'pdfjs', fromCache: false };
+        rawText = text;
+        method = 'pdfjs';
       }
     } catch {
-      // Fall through to next tier
+      // Fall through
     }
   }
 
-  // ── Tier 2: Tesseract.js (images + scanned PDFs) ──────────────────────────
-  // Skip Tesseract if user has a Gemini key — go straight to high quality
-  if (!settings.geminiApiKey) {
+  // ── Tier 2: Tesseract.js ───────────────────────────────────────────────────
+  // Use when: image file, or scanned PDF (PDF.js found nothing), AND no Gemini key
+  if (!rawText && !settings.geminiApiKey) {
     onProgress?.({ stage: 'tesseract' });
     try {
       const text = isPdf
@@ -70,16 +81,17 @@ export async function runOcrPipeline(
         : await ocrImage(buffer.slice(0), file.type);
 
       if (text) {
-        await saveOcrCache(buffer, file.name, text, 'tesseract');
-        return { markdown: text, method: 'tesseract', fromCache: false };
+        rawText = text;
+        method = 'tesseract';
       }
     } catch {
-      // Fall through to Gemini if available
+      // Fall through
     }
   }
 
-  // ── Tier 3: Gemini Vision (high quality, uses API key) ────────────────────
-  if (settings.geminiApiKey) {
+  // ── Tier 3: Gemini Vision ─────────────────────────────────────────────────
+  // Use when: image/scanned PDF AND Gemini key is set (skips Tesseract)
+  if (!rawText && settings.geminiApiKey) {
     onProgress?.({ stage: 'gemini' });
     const text = isPdf
       ? await geminiOcrPdf(settings.geminiApiKey, buffer.slice(0), (page, total) =>
@@ -87,11 +99,24 @@ export async function runOcrPipeline(
         )
       : await geminiOcrImage(settings.geminiApiKey, buffer.slice(0), file.type);
 
-    await saveOcrCache(buffer, file.name, text, 'gemini');
-    return { markdown: text, method: 'gemini', fromCache: false };
+    rawText = text;
+    method = 'gemini';
   }
 
-  throw new Error(
-    'Could not extract text. Add a Gemini API key in Settings for better OCR, or use a digital (non-scanned) PDF.'
-  );
+  if (!rawText) {
+    throw new Error(
+      'Could not extract text. Add a Gemini API key in Settings for better OCR, or use a digital (non-scanned) PDF.'
+    );
+  }
+
+  // ── AI Conversion: raw text → quiz markdown ────────────────────────────────
+  onProgress?.({ stage: 'converting' });
+  const converted = await convertRawTextToQuizMarkdown(rawText);
+  const finalMarkdown = converted ?? rawText;
+  const wasConverted = converted !== null;
+
+  // Cache the final result so re-uploads skip everything
+  await saveOcrCache(buffer, file.name, finalMarkdown, method, wasConverted);
+
+  return { markdown: finalMarkdown, method, converted: wasConverted, fromCache: false };
 }

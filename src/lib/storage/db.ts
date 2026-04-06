@@ -4,8 +4,9 @@ import type { QuizFile, TestSession, AppSettings } from '../markdown/types';
 export interface OcrCacheEntry {
   hash: string;         // SHA-256 hex of file bytes — primary key
   filename: string;
-  markdown: string;     // extracted text as markdown
+  markdown: string;     // final markdown (quiz-formatted if converted, raw text otherwise)
   method: 'pdfjs' | 'tesseract' | 'gemini';
+  converted: boolean;   // true if AI converted raw text to quiz markdown
   cachedAt: number;
 }
 

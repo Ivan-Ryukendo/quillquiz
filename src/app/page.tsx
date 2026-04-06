@@ -4,7 +4,7 @@ import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { parseQuiz } from "@/lib/markdown/parser";
 import { saveQuizFile } from "@/lib/storage/quiz-store";
-import { runOcrPipeline, type OcrProgressEvent } from "@/lib/ocr/pipeline";
+import { runOcrPipeline, type OcrStage } from "@/lib/ocr/pipeline";
 import {
   UploadCloud,
   FileText,
@@ -17,12 +17,12 @@ import {
 type ProcessingStage =
   | { type: "idle" }
   | { type: "parsing" }
-  | { type: "ocr"; stage: OcrProgressEvent["stage"]; page?: number; total?: number };
+  | { type: "ocr"; stage: OcrStage; page?: number; total?: number };
 
 function stageLabel(stage: ProcessingStage): string {
   if (stage.type === "idle") return "";
   if (stage.type === "parsing") return "Parsing markdown…";
-  const labels: Record<OcrProgressEvent["stage"], string> = {
+  const labels: Record<OcrStage, string> = {
     cache: "Checking cache…",
     pdfjs: "Extracting text…",
     tesseract: stage.page
@@ -31,6 +31,7 @@ function stageLabel(stage: ProcessingStage): string {
     gemini: stage.page
       ? `Gemini Vision page ${stage.page}/${stage.total}…`
       : "Gemini Vision OCR…",
+    converting: "Converting to quiz…",
   };
   return labels[stage.stage];
 }
@@ -95,17 +96,16 @@ export default function HomePage() {
             setStage({ type: "ocr", ...event });
           });
 
-          // Save the OCR'd markdown as a quiz file
           const quizFile = parseQuiz(result.markdown, file.name);
 
-          if (quizFile.questions.length === 0) {
-            // No quiz structure detected — save as a raw markdown note so the
-            // user can still see / copy the extracted text from the library.
-            const rawQuizFile = parseQuiz(
-              `# ${file.name}\n\n${result.markdown}`,
-              file.name
+          if (quizFile.questions.length === 0 && !result.converted) {
+            // Raw text with no quiz structure and no AI available —
+            // save as a plain note so the user can see the extracted text.
+            setError(
+              `No quiz structure detected in ${file.name}. ` +
+              "Add a Gemini or OpenRouter API key in Settings to auto-convert."
             );
-            await saveQuizFile(rawQuizFile);
+            await saveQuizFile(parseQuiz(`# ${file.name}\n\n${result.markdown}`, file.name));
           } else {
             await saveQuizFile(quizFile);
           }

@@ -17,10 +17,11 @@ export async function saveOcrCache(
   buffer: ArrayBuffer,
   filename: string,
   markdown: string,
-  method: OcrCacheEntry['method']
+  method: OcrCacheEntry['method'],
+  converted: boolean = false
 ): Promise<OcrCacheEntry> {
   const hash = await hashFile(buffer);
-  const entry: OcrCacheEntry = { hash, filename, markdown, method, cachedAt: Date.now() };
+  const entry: OcrCacheEntry = { hash, filename, markdown, method, converted, cachedAt: Date.now() };
   const db = await getDB();
   await db.put('ocrCache', entry);
   return entry;
