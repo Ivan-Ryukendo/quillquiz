@@ -90,7 +90,7 @@ export default function HomePage() {
           <span>Interactive Learning Environment</span>
         </div>
         <h1 className="text-5xl sm:text-6xl font-bold tracking-tight text-slate-900 dark:text-white">
-          Master Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-500 to-teal-500">Markdown</span> Notes
+          Write once, <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-500 to-teal-500">quiz forever</span>
         </h1>
         <p className="text-lg text-slate-600 dark:text-slate-400 leading-relaxed max-w-xl mx-auto">
           Transform your markdown files into interactive quizzes instantly. 

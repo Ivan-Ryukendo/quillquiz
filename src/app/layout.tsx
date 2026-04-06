@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Markdown Quiz Test",
-  description: "Upload markdown files and take interactive quizzes with AI grading",
+  title: "QuillQuiz",
+  description: "Turn your markdown notes into interactive quizzes with AI grading",
 };
 
 export default function RootLayout({
@@ -32,7 +32,7 @@ export default function RootLayout({
         <nav className="border-b border-gray-200 dark:border-gray-800 px-6 py-3">
           <div className="max-w-5xl mx-auto flex items-center gap-6">
             <Link href="/" className="font-bold text-lg">
-              QuizMD
+              QuillQuiz
             </Link>
             <Link href="/library" className="text-sm hover:underline">
               Library
