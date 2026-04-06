@@ -3,7 +3,7 @@ import { buildGradingPrompt } from './prompts';
 import { withRetry, friendlyApiError } from './retry';
 
 const GEMINI_API_URL =
-  'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+  'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
 
 export async function checkWithGemini(
   apiKey: string,
@@ -28,7 +28,8 @@ export async function checkWithGemini(
     });
 
     if (!response.ok) {
-      throw new Error(friendlyApiError(response.status, 'Gemini'));
+      const body = await response.text().catch(() => '');
+      throw new Error(friendlyApiError(response.status, 'Gemini', body));
     }
 
     const data = await response.json();

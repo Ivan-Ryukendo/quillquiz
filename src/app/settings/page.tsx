@@ -30,7 +30,7 @@ export default function SettingsPage() {
     try {
       if (settings.geminiApiKey) {
         const res = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${settings.geminiApiKey}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${settings.geminiApiKey}`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -42,7 +42,8 @@ export default function SettingsPage() {
         if (res.ok) {
           setTestResult("Gemini API key works!");
         } else {
-          setTestResult(friendlyApiError(res.status, 'Gemini'));
+          const body = await res.text().catch(() => "");
+          setTestResult(friendlyApiError(res.status, "Gemini", body));
         }
       } else {
         setTestResult("No Gemini API key set.");

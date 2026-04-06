@@ -1,13 +1,13 @@
 /**
  * Tier 3: OCR via Gemini Vision — high quality, uses the user's Gemini API key.
- * Sends image/PDF pages as base64 inline data to gemini-2.0-flash.
+ * Sends image/PDF pages as base64 inline data to gemini-2.5-flash.
  * For PDFs, renders each page to a canvas via PDF.js then sends as JPEG.
  */
 
 import { withRetry, friendlyApiError } from '../ai/retry';
 
 const GEMINI_API_URL =
-  'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+  'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
 
 const EXTRACT_PROMPT =
   'Extract all text from this image exactly as it appears. ' +
@@ -36,7 +36,10 @@ async function geminiVisionRequest(
       }),
     });
 
-    if (!response.ok) throw new Error(friendlyApiError(response.status, 'Gemini Vision'));
+    if (!response.ok) {
+      const body = await response.text().catch(() => '');
+      throw new Error(friendlyApiError(response.status, 'Gemini Vision', body));
+    }
 
     const data = await response.json();
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text;

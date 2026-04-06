@@ -3,7 +3,7 @@ import { getSettings } from '../storage/settings-store';
 import { withRetry, friendlyApiError } from './retry';
 
 const GEMINI_API_URL =
-  'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+  'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
 async function convertWithGemini(apiKey: string, rawText: string): Promise<string> {
@@ -19,7 +19,10 @@ async function convertWithGemini(apiKey: string, rawText: string): Promise<strin
       }),
     });
 
-    if (!response.ok) throw new Error(friendlyApiError(response.status, 'Gemini'));
+    if (!response.ok) {
+      const body = await response.text().catch(() => '');
+      throw new Error(friendlyApiError(response.status, 'Gemini', body));
+    }
 
     const data = await response.json();
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
@@ -39,7 +42,7 @@ async function convertWithOpenRouter(apiKey: string, rawText: string): Promise<s
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.0-flash-exp:free',
+        model: 'google/gemini-2.5-flash-exp:free',
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.3,
       }),
