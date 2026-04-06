@@ -2,76 +2,115 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-@AGENTS.md
+> **Next.js 16 note:** This project uses Next.js 16.2.2 (Turbopack). APIs, conventions, and file structure may differ from older versions. Read `node_modules/next/dist/docs/` before writing any Next.js-specific code.
 
 ## Commands
 
 ```bash
-npm run dev          # Start dev server at localhost:3000
-npm run build        # Production build
+npm run dev          # Dev server at localhost:3000
+npm run build        # Production build (also runs TypeScript check)
 npm run lint         # ESLint
 npm run test         # Run tests once (vitest)
-npm run test:watch   # Run tests in watch mode
-npm run test:ui      # Run tests with Vitest UI
+npm run test:watch   # Watch mode
+npm run test:ui      # Vitest UI
 ```
 
-To run a single test file: `npx vitest run src/lib/markdown/__tests__/parser.test.ts`
+Run a single test file: `npx vitest run src/lib/markdown/__tests__/parser.test.ts`
+
+Deploy: `vercel --prod --yes` (project already linked via `.vercel/`)
 
 ## Architecture
 
-**QuillQuiz** is a client-side quiz app that parses markdown files into interactive quizzes. All quiz data is stored in IndexedDB (via `idb`) — there is no backend database.
+**QuillQuiz** — upload markdown/PDF/images → parse into interactive quizzes → take tests with AI grading. Entirely client-side except one server route. All persistence is IndexedDB (no backend database).
 
-### Data Flow
+### Full Upload Flow
 
-1. User uploads `.md` / `.markdown` files on the home page
-2. `parseQuiz()` → `parseQuestions()` → `detectQuestion()` builds a `QuizFile` with typed `Question[]`
-3. `QuizFile` is persisted to IndexedDB via `src/lib/storage/quiz-store.ts`
-4. User configures a test session (`TestConfig`) at `/test/configure`
-5. `createTestSession()` in `src/lib/test-engine/engine.ts` builds a `TestSession` and saves it
-6. The active test runs at `/test/[sessionId]`; results at `/test/results/[sessionId]`
+```
+Upload (.md / .pdf / image)
+        │
+        ├─ .md/.markdown ──→ parseQuiz() ──→ saveQuizFile() ──→ /library
+        │
+        └─ PDF / image ──→ runOcrPipeline()
+                                │
+                                ├─ 1. Check ocrCache (IndexedDB by SHA-256 hash)
+                                ├─ 2. PDF.js  — digital PDFs (free, in-browser)
+                                ├─ 3. Tesseract.js — scanned/images, no Gemini key
+                                ├─ 4. Gemini Vision — if Gemini key set (skips Tesseract)
+                                │
+                                └─ convertRawTextToQuizMarkdown() ← Gemini / OpenRouter
+                                        │
+                                        └─ parseQuiz() ──→ saveQuizFile() ──→ /library
+```
+
+OCR results (post-conversion) are cached in IndexedDB by file hash — re-uploading the same file skips OCR and AI conversion entirely.
+
+### Quiz Test Flow
+
+1. `/library` — select quiz files → `/test/configure`
+2. `createTestSession()` builds a `TestSession` with shuffled/filtered `Question[]`
+3. `/test/[sessionId]` — MCQ auto-grades client-side; short/long answers call `checkAnswer()` → AI grading
+4. `/test/results/[sessionId]` — `computeScore()` aggregates results
 
 ### Question Detection (`src/lib/markdown/detect.ts`)
 
-Questions are `##` (or deeper) headings. H1 headings are section titles and are ignored. Type is determined by:
-- **MCQ**: heading has a GFM checkbox list (`- [x]` / `- [ ]`) below it
-- **Short**: blockquote answer under 50 words
-- **Long**: blockquote answer 50+ words
-- **Override**: prefix heading with `[MCQ]`, `[SHORT]`, or `[LONG]` to force a type
+Questions are `##`+ headings. H1 = section title (ignored). Type detection:
+- **MCQ**: GFM checkbox list (`- [x]` / `- [ ]`) below heading
+- **Short**: blockquote answer < 50 words
+- **Long**: blockquote answer ≥ 50 words
+- **Override**: prefix with `[MCQ]`, `[SHORT]`, or `[LONG]`
 
-Reference answers go in blockquotes (`> answer`). Thematic breaks (`---`) between questions are ignored.
+Thematic breaks (`---`) between questions are ignored.
 
-### AI Grading (`src/lib/ai/`)
+### AI Layer (`src/lib/ai/`)
 
-Free-text answers (short/long) are graded by AI. Priority:
-1. User's Gemini API key (`gemini.ts`)
-2. User's OpenRouter API key (`openrouter.ts`)
-3. Demo mode: proxied through `/api/ai-check` (rate-limited at 20/hour per IP, requires `GEMINI_API_KEY` env var on server)
+All Gemini/OpenRouter calls are wrapped with `withRetry()` from `retry.ts` — retries up to 4× on 429 with exponential backoff (2s → 4s → 8s). `friendlyApiError()` maps HTTP status codes to readable messages including the first 120 chars of the response body.
 
-AI grading returns `{ score: 0–100, feedback: string, keyMissing: string[] }`.
+**Grading priority** (short/long answers):
+1. User's Gemini key → `gemini.ts`
+2. User's OpenRouter key → `openrouter.ts`
+3. Demo mode → `/api/ai-check` server proxy (requires `GEMINI_API_KEY` env var, rate-limited 20 req/hour/IP)
+
+**OCR-to-quiz conversion** (`converter.ts`): same Gemini → OpenRouter priority. Converts raw extracted text into `##` headings + checkboxes + blockquotes that `parseQuiz()` understands.
+
+Current model: **`gemini-2.5-flash`** across all Gemini calls.
 
 ### Storage (`src/lib/storage/`)
 
-- `db.ts` — IndexedDB schema and singleton `getDB()`. Stores: `quizFiles`, `testSessions`, `settings`
-- `quiz-store.ts` — CRUD for `QuizFile`
-- `session-store.ts` — CRUD for `TestSession`
-- `settings-store.ts` — Persists `AppSettings` (API keys, demo mode toggle)
+IndexedDB schema in `db.ts` — **DB version 2**. Four stores:
+
+| Store | Key | Purpose |
+|---|---|---|
+| `quizFiles` | `id` | Parsed quiz files |
+| `testSessions` | `id` | Active and completed sessions |
+| `settings` | `key` | API keys, demo mode flag |
+| `ocrCache` | `hash` (SHA-256) | OCR+converted markdown, cached by file content |
+
+When adding a new store, bump `DB_VERSION` and add an `if (oldVersion < N)` branch in the `upgrade()` callback.
+
+### Key Types (`src/lib/markdown/types.ts`)
+
+`QuizFile` → `Question[]`. `TestSession` → `Question[]` + `Record<string, UserAnswer>`. `OcrCacheEntry` → `{ hash, markdown, method, converted }`. `AppSettings` → API keys + demo mode flag.
 
 ### App Routes
 
 | Route | Purpose |
 |---|---|
-| `/` | Upload / drag-drop markdown files |
-| `/library` | Browse and manage uploaded quiz files |
-| `/test/configure` | Select files, mode, question types, count |
+| `/` | Upload — markdown, PDF, images |
+| `/library` | Browse, select, delete quiz files |
+| `/test/configure` | Mode, type filter, count, time limit |
 | `/test/[sessionId]` | Active test |
-| `/test/results/[sessionId]` | Score and per-question review |
-| `/settings` | API key configuration |
-| `/api/ai-check` | Server-side AI proxy for demo mode |
+| `/test/results/[sessionId]` | Score + per-question review |
+| `/settings` | API key config + key tester |
+| `/api/ai-check` | Server proxy for demo mode grading |
 
-### Key Types (`src/lib/markdown/types.ts`)
+### Conventions
 
-`QuizFile` → contains `Question[]`. `TestSession` → contains `Question[]` + `Record<string, UserAnswer>`. `AppSettings` holds API keys.
+- All JSX conditionals use ternary `? … : null` — never `&&` (avoids rendering `0`/`NaN` as text)
+- No barrel files — import directly from source files
+- `'use client'` goes only on the boundary component, not on utility modules it imports
+- OCR utility files (`pdf-extract.ts`, `tesseract-ocr.ts`, `gemini-vision.ts`) are plain modules — `'use client'` is only on `pipeline.ts`
+- Heavy OCR libs (`pdfjs-dist`, `tesseract.js`) are dynamic-imported inside functions to keep the initial bundle small
 
 ### Testing
 
-Tests use Vitest with `happy-dom`. The `@` alias resolves to `src/`. Tests live alongside source in `__tests__/` subdirectories.
+Vitest + `happy-dom`. `@` alias → `src/`. Tests in `__tests__/` next to source.
