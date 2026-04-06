@@ -1,36 +1,175 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# QuillQuiz
 
-## Getting Started
+**Turn your notes into interactive quizzes — instantly.**
 
-First, run the development server:
+Write your study material in markdown. Drop it in. QuillQuiz parses it into a full quiz with multiple choice, short answer, and long answer questions — all graded by AI.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+**Live:** [quillquiz.vercel.app](https://quillquiz.vercel.app)
+
+---
+
+## What it does
+
+- Upload `.md` files, PDFs, or images
+- They become interactive quizzes automatically
+- MCQ answers are checked instantly; written answers are graded by AI with score + feedback
+- Everything is stored in your browser — no account, no server, no data leaving your device (except AI grading calls)
+
+---
+
+## Markdown Quiz Format
+
+Write your quiz as a markdown file. Questions are `##` headings. H1 headings (`#`) are treated as section titles and ignored.
+
+### Multiple Choice
+
+Use a GFM checkbox list under the heading. Mark correct answers with `[x]`:
+
+```markdown
+## What is the capital of France?
+
+- [ ] London
+- [x] Paris
+- [ ] Berlin
+- [ ] Madrid
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Multiple correct answers work too — just mark them all with `[x]`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Short Answer
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Put the reference answer in a blockquote (under ~50 words):
 
-## Learn More
+```markdown
+## Define osmosis.
 
-To learn more about Next.js, take a look at the following resources:
+> The movement of water molecules through a semipermeable membrane from an area of high water concentration to low water concentration.
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Long Answer
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Add a `[LONG]` tag and use a blockquote for the reference answer:
 
-## Deploy on Vercel
+```markdown
+## [LONG] Explain the process of photosynthesis.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+> Photosynthesis is the process by which plants use sunlight, water, and CO₂
+> to produce glucose and oxygen. It occurs in chloroplasts via the light
+> reactions (producing ATP and NADPH) and the Calvin cycle (fixing CO₂).
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Force a Question Type
+
+Prefix any heading with `[MCQ]`, `[SHORT]`, or `[LONG]` to override auto-detection:
+
+```markdown
+## [SHORT] Explain quantum entanglement in detail.
+
+> Two particles become linked such that measuring one instantly determines the state of the other.
+```
+
+### Frontmatter (optional)
+
+Add YAML frontmatter for metadata:
+
+```markdown
+---
+title: "Biology Midterm"
+description: "Cell biology and genetics"
+tags: ["biology", "cells"]
+time_limit: 30
+---
+
+## What organelle produces energy?
+
+- [x] Mitochondria
+- [ ] Nucleus
+```
+
+`time_limit` is in minutes. Section titles using `#` and horizontal rules (`---`) between questions are both fine and ignored by the parser.
+
+---
+
+## PDF & Image Upload
+
+Drop in a PDF or image — QuillQuiz will extract the text and automatically convert it into quiz format using AI.
+
+**How it works (3-tier pipeline):**
+
+1. **PDF.js** — extracts text from digital PDFs instantly, no API needed
+2. **Tesseract.js** — in-browser OCR for scanned PDFs and images (no API key required, slower)
+3. **Gemini Vision** — high-quality OCR when you have a Gemini API key configured (skips Tesseract)
+
+After extraction, the raw text is sent to Gemini (or OpenRouter) to be converted into proper quiz markdown with `##` headings, checkboxes, and blockquotes. The result is cached by file content hash — re-uploading the same file skips all processing instantly.
+
+---
+
+## AI Grading
+
+Short and long answer questions are graded by AI. The grader returns:
+- A score from 0–100
+- Written feedback
+- A list of key concepts that were missed
+
+**AI provider priority:**
+
+| Priority | Provider | How to set up |
+|---|---|---|
+| 1 | Your Gemini key | Settings → Gemini API Key |
+| 2 | Your OpenRouter key | Settings → OpenRouter API Key |
+| 3 | Demo mode | Shared server key (rate-limited, may be unavailable) |
+
+Get a free Gemini key at [aistudio.google.com/apikey](https://aistudio.google.com/apikey). The free tier gives 15 requests/minute and 1,500/day — enough for regular use. If you hit the rate limit, QuillQuiz retries automatically with exponential backoff.
+
+---
+
+## Running Locally
+
+```bash
+git clone https://github.com/Ivan-Ryukendo/quillquiz
+cd quillquiz
+npm install
+npm run dev
+```
+
+Open [localhost:3000](http://localhost:3000).
+
+For AI grading in demo mode locally, create `.env.local`:
+
+```
+GEMINI_API_KEY=your_key_here
+```
+
+---
+
+## Tech Stack
+
+| | |
+|---|---|
+| Framework | Next.js 16 (App Router, Turbopack) |
+| Language | TypeScript |
+| Styling | Tailwind CSS v4 |
+| Storage | IndexedDB via `idb` |
+| Markdown parsing | `unified` + `remark-parse` + `remark-gfm` |
+| OCR | `pdfjs-dist` + `tesseract.js` |
+| AI | Google Gemini 2.5 Flash / OpenRouter |
+| Tests | Vitest + happy-dom |
+| Deploy | Vercel |
+
+---
+
+## Convert Notes with Claude Code
+
+A Claude Code skill is included at [`skills/convert-to-quiz/SKILL.md`](skills/convert-to-quiz/SKILL.md). If you use Claude Code, it will automatically convert raw text (lecture notes, textbook excerpts, plain questions) into properly formatted QuillQuiz markdown.
+
+---
+
+## Scripts
+
+```bash
+npm run dev          # Development server
+npm run build        # Production build
+npm run test         # Run tests
+npm run test:watch   # Watch mode
+npm run lint         # ESLint
+```
