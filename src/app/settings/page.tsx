@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { getSettings, saveSettings } from "@/lib/storage/settings-store";
+import { friendlyApiError } from "@/lib/ai/retry";
 import type { AppSettings } from "@/lib/markdown/types";
 
 export default function SettingsPage() {
@@ -41,7 +42,7 @@ export default function SettingsPage() {
         if (res.ok) {
           setTestResult("Gemini API key works!");
         } else {
-          setTestResult(`Gemini key failed: ${res.status}`);
+          setTestResult(friendlyApiError(res.status, 'Gemini'));
         }
       } else {
         setTestResult("No Gemini API key set.");

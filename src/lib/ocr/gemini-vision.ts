@@ -4,6 +4,8 @@
  * For PDFs, renders each page to a canvas via PDF.js then sends as JPEG.
  */
 
+import { withRetry, friendlyApiError } from '../ai/retry';
+
 const GEMINI_API_URL =
   'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 
@@ -17,30 +19,30 @@ async function geminiVisionRequest(
   base64Data: string,
   mimeType: string
 ): Promise<string> {
-  const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [
-        {
-          parts: [
-            { text: EXTRACT_PROMPT },
-            { inlineData: { mimeType, data: base64Data } },
-          ],
-        },
-      ],
-      generationConfig: { temperature: 0 },
-    }),
+  return withRetry(async () => {
+    const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [
+              { text: EXTRACT_PROMPT },
+              { inlineData: { mimeType, data: base64Data } },
+            ],
+          },
+        ],
+        generationConfig: { temperature: 0 },
+      }),
+    });
+
+    if (!response.ok) throw new Error(friendlyApiError(response.status, 'Gemini Vision'));
+
+    const data = await response.json();
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!text) throw new Error('Empty response from Gemini Vision');
+    return text.trim();
   });
-
-  if (!response.ok) {
-    throw new Error(`Gemini Vision error: ${response.status}`);
-  }
-
-  const data = await response.json();
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) throw new Error('Empty response from Gemini Vision');
-  return text.trim();
 }
 
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
