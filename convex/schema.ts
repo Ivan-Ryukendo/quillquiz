@@ -59,7 +59,8 @@ export default defineSchema({
   })
     .index("by_roomCode", ["roomCode"])
     .index("by_creatorId", ["creatorId"])
-    .index("by_status", ["status"]),
+    .index("by_status", ["status"])
+    .index("by_quizId", ["quizId"]),
 
   examParticipants: defineTable({
     examId: v.id("examSessions"),
