@@ -1,7 +1,10 @@
 import type { AiGradeResult } from '../markdown/types';
 import { getSettings } from '../storage/settings-store';
-import { checkWithGemini } from './gemini';
-import { checkWithOpenRouter } from './openrouter';
+import { checkWithGemini, checkBatchWithGemini } from './gemini';
+import { checkWithOpenRouter, checkBatchWithOpenRouter } from './openrouter';
+import type { BatchGradeItem } from './prompts';
+
+export type { BatchGradeItem } from './prompts';
 
 export async function checkAnswer(
   question: string,
@@ -47,6 +50,52 @@ export async function checkAnswer(
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ question, referenceAnswer, studentAnswer, questionType }),
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Demo mode error: ${response.status} ${error}`);
+    }
+
+    return response.json();
+  }
+
+  throw new Error(
+    'No AI provider configured. Please add a Gemini or OpenRouter API key in Settings, or enable Demo Mode.'
+  );
+}
+
+export async function checkAnswersBatch(
+  items: BatchGradeItem[]
+): Promise<Record<string, AiGradeResult>> {
+  if (items.length === 0) return {};
+
+  const settings = await getSettings();
+
+  // Try Gemini first (user's own key)
+  if (settings.geminiApiKey) {
+    try {
+      return await checkBatchWithGemini(settings.geminiApiKey, items);
+    } catch (err) {
+      console.warn('Gemini batch check failed, trying fallback:', err);
+    }
+  }
+
+  // Try OpenRouter (user's own key)
+  if (settings.openrouterApiKey) {
+    try {
+      return await checkBatchWithOpenRouter(settings.openrouterApiKey, items);
+    } catch (err) {
+      console.warn('OpenRouter batch check failed, trying demo mode:', err);
+    }
+  }
+
+  // Fall back to demo mode (serverless proxy)
+  if (settings.useDemoMode) {
+    const response = await fetch('/api/ai-check', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ batch: items }),
     });
 
     if (!response.ok) {
