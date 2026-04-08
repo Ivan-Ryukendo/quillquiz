@@ -203,8 +203,7 @@ export const getActiveByQuizId = query({
       status: v.union(
         v.literal("lobby"),
         v.literal("in_progress"),
-        v.literal("paused"),
-        v.literal("completed")
+        v.literal("paused")
       ),
     }),
     v.null()
