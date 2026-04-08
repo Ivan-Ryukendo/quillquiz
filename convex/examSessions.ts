@@ -1,0 +1,195 @@
+import { query, mutation } from "./_generated/server";
+import { v } from "convex/values";
+import { ConvexError } from "convex/values";
+import { getUser, requireExamCreator } from "./helpers/auth";
+import { generateUniqueRoomCode } from "./helpers/roomCode";
+
+const examSettingsValidator = v.object({
+  timeLimit: v.optional(v.number()),
+  allowLateJoins: v.boolean(),
+  lateJoinFullTime: v.boolean(),
+  proctoringLevel: v.union(
+    v.literal("standard"),
+    v.literal("aggressive"),
+    v.literal("visibility")
+  ),
+  enforceLogin: v.boolean(),
+  teacherPin: v.optional(v.string()),
+});
+
+export const create = mutation({
+  args: {
+    quizId: v.id("sharedQuizzes"),
+    settings: examSettingsValidator,
+  },
+  returns: v.object({
+    id: v.id("examSessions"),
+    roomCode: v.string(),
+  }),
+  handler: async (ctx, args) => {
+    const user = await getUser(ctx);
+
+    const quiz = await ctx.db.get(args.quizId);
+    if (!quiz || quiz.creatorId !== user._id) {
+      throw new ConvexError("Quiz not found or not owned by you");
+    }
+
+    const roomCode = await generateUniqueRoomCode(ctx, "examSessions", "by_roomCode");
+    const now = Date.now();
+
+    const id = await ctx.db.insert("examSessions", {
+      creatorId: user._id,
+      quizId: args.quizId,
+      status: "lobby",
+      settings: args.settings,
+      roomCode,
+      createdAt: now,
+    });
+
+    return { id, roomCode };
+  },
+});
+
+export const get = query({
+  args: { examId: v.id("examSessions") },
+  returns: v.union(
+    v.object({
+      _id: v.id("examSessions"),
+      _creationTime: v.number(),
+      creatorId: v.id("users"),
+      quizId: v.id("sharedQuizzes"),
+      status: v.union(
+        v.literal("lobby"),
+        v.literal("in_progress"),
+        v.literal("paused"),
+        v.literal("completed")
+      ),
+      settings: examSettingsValidator,
+      roomCode: v.string(),
+      startedAt: v.optional(v.number()),
+      endedAt: v.optional(v.number()),
+      createdAt: v.number(),
+    }),
+    v.null()
+  ),
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.examId);
+  },
+});
+
+export const getByRoomCode = query({
+  args: { roomCode: v.string() },
+  returns: v.union(
+    v.object({
+      _id: v.id("examSessions"),
+      status: v.union(
+        v.literal("lobby"),
+        v.literal("in_progress"),
+        v.literal("paused"),
+        v.literal("completed")
+      ),
+      settings: v.object({
+        timeLimit: v.optional(v.number()),
+        allowLateJoins: v.boolean(),
+        lateJoinFullTime: v.boolean(),
+        proctoringLevel: v.union(
+          v.literal("standard"),
+          v.literal("aggressive"),
+          v.literal("visibility")
+        ),
+        enforceLogin: v.boolean(),
+      }),
+      roomCode: v.string(),
+      startedAt: v.optional(v.number()),
+    }),
+    v.null()
+  ),
+  handler: async (ctx, args) => {
+    const exam = await ctx.db
+      .query("examSessions")
+      .withIndex("by_roomCode", (q) => q.eq("roomCode", args.roomCode))
+      .unique();
+
+    if (!exam) return null;
+
+    return {
+      _id: exam._id,
+      status: exam.status,
+      settings: {
+        timeLimit: exam.settings.timeLimit,
+        allowLateJoins: exam.settings.allowLateJoins,
+        lateJoinFullTime: exam.settings.lateJoinFullTime,
+        proctoringLevel: exam.settings.proctoringLevel,
+        enforceLogin: exam.settings.enforceLogin,
+      },
+      roomCode: exam.roomCode,
+      startedAt: exam.startedAt,
+    };
+  },
+});
+
+export const start = mutation({
+  args: { examId: v.id("examSessions") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const { exam } = await requireExamCreator(ctx, args.examId);
+
+    if (exam.status !== "lobby") {
+      throw new ConvexError("Exam can only be started from lobby state");
+    }
+
+    await ctx.db.patch(args.examId, {
+      status: "in_progress",
+      startedAt: Date.now(),
+    });
+    return null;
+  },
+});
+
+export const pause = mutation({
+  args: { examId: v.id("examSessions") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const { exam } = await requireExamCreator(ctx, args.examId);
+
+    if (exam.status !== "in_progress") {
+      throw new ConvexError("Can only pause an in-progress exam");
+    }
+
+    await ctx.db.patch(args.examId, { status: "paused" });
+    return null;
+  },
+});
+
+export const resume = mutation({
+  args: { examId: v.id("examSessions") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const { exam } = await requireExamCreator(ctx, args.examId);
+
+    if (exam.status !== "paused") {
+      throw new ConvexError("Can only resume a paused exam");
+    }
+
+    await ctx.db.patch(args.examId, { status: "in_progress" });
+    return null;
+  },
+});
+
+export const end = mutation({
+  args: { examId: v.id("examSessions") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const { exam } = await requireExamCreator(ctx, args.examId);
+
+    if (exam.status === "completed") {
+      throw new ConvexError("Exam is already completed");
+    }
+
+    await ctx.db.patch(args.examId, {
+      status: "completed",
+      endedAt: Date.now(),
+    });
+    return null;
+  },
+});
