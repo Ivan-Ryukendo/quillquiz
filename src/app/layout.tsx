@@ -1,15 +1,17 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter, Playfair_Display } from "next/font/google";
 import Link from "next/link";
 import "./globals.css";
+import { ThemeProvider } from "@/components/ThemeProvider";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const inter = Inter({
+  variable: "--font-sans",
   subsets: ["latin"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const playfair = Playfair_Display({
+  variable: "--font-serif",
   subsets: ["latin"],
 });
 
@@ -26,25 +28,31 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      suppressHydrationWarning
+      className={`${inter.variable} ${playfair.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-background text-foreground">
-        <nav className="border-b border-gray-200 dark:border-gray-800 px-6 py-3">
-          <div className="max-w-5xl mx-auto flex items-center gap-6">
-            <Link href="/" className="font-bold text-lg">
-              QuillQuiz
-            </Link>
-            <Link href="/library" className="text-sm hover:underline">
-              Library
-            </Link>
-            <Link href="/settings" className="text-sm hover:underline ml-auto">
-              Settings
-            </Link>
-          </div>
-        </nav>
-        <main className="flex-1 max-w-5xl mx-auto w-full px-6 py-8">
-          {children}
-        </main>
+      <body className="min-h-full flex flex-col bg-background text-foreground font-sans">
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+          <nav className="border-b border-slate-200 dark:border-slate-800 px-6 py-4">
+            <div className="max-w-5xl mx-auto flex items-center gap-8">
+              <Link href="/" className="font-serif font-bold text-2xl tracking-tight">
+                QuillQuiz.
+              </Link>
+              <Link href="/library" className="text-sm font-medium hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
+                Library
+              </Link>
+              <div className="ml-auto flex items-center gap-4">
+                <Link href="/settings" className="text-sm font-medium hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
+                  Settings
+                </Link>
+                <ThemeToggle />
+              </div>
+            </div>
+          </nav>
+          <main className="flex-1 max-w-5xl mx-auto w-full px-6 py-12">
+            {children}
+          </main>
+        </ThemeProvider>
       </body>
     </html>
   );

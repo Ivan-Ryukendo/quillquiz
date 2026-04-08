@@ -89,19 +89,36 @@ When adding a new store, bump `DB_VERSION` and add an `if (oldVersion < N)` bran
 
 ### Key Types (`src/lib/markdown/types.ts`)
 
-`QuizFile` → `Question[]`. `TestSession` → `Question[]` + `Record<string, UserAnswer>`. `OcrCacheEntry` → `{ hash, markdown, method, converted }`. `AppSettings` → API keys + demo mode flag.
+`QuizFile` → `Question[]` + `QuizMetadata` (title, description, author, tags, timeLimit). `TestSession` → `Question[]` + `Record<string, UserAnswer>`. `OcrCacheEntry` → `{ hash, markdown, method, converted }`. `AppSettings` → API keys + demo mode flag.
 
 ### App Routes
 
 | Route | Purpose |
 |---|---|
 | `/` | Upload — markdown, PDF, images |
-| `/library` | Browse, select, delete quiz files |
+| `/library` | Browse, select, delete, export quiz files |
+| `/editor/[quizId]` | Edit quiz — structured card view or raw markdown source |
 | `/test/configure` | Mode, type filter, count, time limit |
 | `/test/[sessionId]` | Active test |
 | `/test/results/[sessionId]` | Score + per-question review |
 | `/settings` | API key config + key tester |
 | `/api/ai-check` | Server proxy for demo mode grading |
+
+### Editor (`src/app/editor/[quizId]/page.tsx`)
+
+Two modes toggled per-quiz:
+- **Structured**: renders `QuestionCard` components (edit question text, options, answer inline)
+- **Source**: raw markdown textarea — parsed live with `parseQuestions()`, error shown if invalid
+
+Saves via `saveQuizFile()` with a re-serialized `rawMarkdown` via `serializeQuiz()` (`src/lib/markdown/serializer.ts`). The serializer round-trips `QuizMetadata` as YAML frontmatter and reconstructs `##` headings + checkboxes + blockquotes.
+
+### Export (`src/lib/export.ts`)
+
+`downloadMarkdown()`, `downloadJson()`, `downloadPdf()` — all trigger browser download via `URL.createObjectURL`. PDF export builds a print-styled HTML blob. `DownloadMenu` component (`src/components/DownloadMenu.tsx`) wraps these in a dropdown on library cards.
+
+### Theme
+
+`ThemeProvider` + `ThemeToggle` components (`src/components/`) — dark/light mode via `next-themes`. Provider wraps the root layout.
 
 ### Conventions
 
