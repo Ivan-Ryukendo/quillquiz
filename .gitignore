@@ -40,9 +40,18 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# git worktrees
+.worktrees/
+
 # Claude / agent internals (not for public repo)
 .agents/
 .claude/
 memory/
 AGENTS.md
 skills-lock.json
+
+# Internal docs / brainstorm (not for public repo)
+/docs/
+.superpowers/
+
+.vercel
