@@ -147,6 +147,15 @@ export default function LibraryPage() {
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
+                      router.push(`/editor/${file.id}`);
+                    }}
+                    className="text-blue-400 hover:text-blue-600 text-xs ml-2"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
                       handleDelete(file.id);
                     }}
                     className="text-red-400 hover:text-red-600 text-xs ml-2"
