@@ -14,7 +14,7 @@ export async function getUser(ctx: QueryCtx | MutationCtx) {
   const identity = await requireAuth(ctx);
   const user = await ctx.db
     .query("users")
-    .withIndex("by_authId", (q) => q.eq("authId", identity.subject))
+    .withIndex("by_authId", (q) => q.eq("authId", identity.tokenIdentifier))
     .unique();
   if (!user) {
     throw new ConvexError("User profile not found. Please complete signup.");
