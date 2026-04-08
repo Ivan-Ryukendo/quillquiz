@@ -18,6 +18,7 @@ export default function JoinPage() {
   const [showPinForm, setShowPinForm] = useState(false);
   const [adding, setAdding] = useState(false);
   const [added, setAdded] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
 
   const sharedQuiz = useQuery(api.sharedQuizzes.getByShareCode, {
     shareCode: code.toUpperCase(),
@@ -36,6 +37,13 @@ export default function JoinPage() {
     return () => clearTimeout(timer);
   }, [sharedQuiz]);
 
+  // Redirect to library when quiz is successfully added
+  useEffect(() => {
+    if (!added) return;
+    const timer = setTimeout(() => router.push("/library"), 800);
+    return () => clearTimeout(timer);
+  }, [added, router]);
+
   const handlePinSubmit = () => {
     setPinError(null);
     if (!pin.trim()) {
@@ -48,13 +56,14 @@ export default function JoinPage() {
 
   const handleAddToLibrary = async () => {
     if (!sharedQuiz) return;
+    setAddError(null);
     setAdding(true);
     try {
       const quizFile = parseQuiz(sharedQuiz.markdown, `${code.toUpperCase()}.md`);
       await saveQuizFile(quizFile);
       setAdded(true);
-      setTimeout(() => router.push("/library"), 800);
-    } catch {
+    } catch (err) {
+      setAddError(err instanceof Error ? err.message : "Failed to add quiz");
       setAdding(false);
     }
   };
@@ -191,6 +200,10 @@ export default function JoinPage() {
           </>
         )}
       </button>
+
+      {addError ? (
+        <p className="text-red-500 text-xs text-center mt-2">{addError}</p>
+      ) : null}
 
       <p className="text-xs text-gray-400 text-center mt-3">
         This will save the quiz to your local library.
