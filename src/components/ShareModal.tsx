@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import { useMutation, useConvexAuth } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { QuizFile } from "@/lib/markdown/types";
@@ -25,16 +26,14 @@ export default function ShareModal({ file, onClose }: ShareModalProps) {
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const shareUrl =
-    typeof window !== "undefined"
-      ? `${window.location.origin}/join/${shareCode}`
-      : `/join/${shareCode}`;
-
   useEffect(() => {
-    if (shareCode) {
-      generateQRDataURL(shareUrl).then(setQrDataUrl);
-    }
-  }, [shareCode, shareUrl]);
+    if (!shareCode) return;
+    const url =
+      typeof window !== "undefined"
+        ? `${window.location.origin}/join/${shareCode}`
+        : `/join/${shareCode}`;
+    generateQRDataURL(url).then(setQrDataUrl);
+  }, [shareCode]);
 
   const handleShare = async () => {
     setError(null);
@@ -61,10 +60,19 @@ export default function ShareModal({ file, onClose }: ShareModalProps) {
     }
   };
 
+  useEffect(() => {
+    if (!copied) return;
+    const timer = setTimeout(() => setCopied(false), 2000);
+    return () => clearTimeout(timer);
+  }, [copied]);
+
   const handleCopy = async () => {
+    const shareUrl =
+      typeof window !== "undefined"
+        ? `${window.location.origin}/join/${shareCode}`
+        : `/join/${shareCode}`;
     await navigator.clipboard.writeText(shareUrl);
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
   };
 
   return (
@@ -140,7 +148,11 @@ export default function ShareModal({ file, onClose }: ShareModalProps) {
                 Share Link
               </p>
               <div className="flex items-center gap-2 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2">
-                <span className="text-sm flex-1 truncate font-mono">{shareUrl}</span>
+                <span className="text-sm flex-1 truncate font-mono">
+                  {typeof window !== "undefined"
+                    ? `${window.location.origin}/join/${shareCode}`
+                    : `/join/${shareCode}`}
+                </span>
                 <button
                   onClick={handleCopy}
                   aria-label="Copy link"
@@ -161,12 +173,13 @@ export default function ShareModal({ file, onClose }: ShareModalProps) {
 
             {qrDataUrl ? (
               <div className="flex justify-center">
-                <img
+                <Image
                   src={qrDataUrl}
-                  alt={`QR code for share link ${shareUrl}`}
-                  className="rounded-lg"
+                  alt={`QR code for share link`}
                   width={200}
                   height={200}
+                  className="rounded-lg"
+                  unoptimized
                 />
               </div>
             ) : (
