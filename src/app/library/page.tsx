@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { getAllQuizFiles, deleteQuizFile } from "@/lib/storage/quiz-store";
 import type { QuizFile } from "@/lib/markdown/types";
+import DownloadMenu from "@/components/DownloadMenu";
 
 // Single pass over questions — extracted outside component so it's not recreated on every render
 function countByType(file: QuizFile) {
@@ -153,6 +154,9 @@ export default function LibraryPage() {
                   >
                     Edit
                   </button>
+                  <div onClick={(e) => e.stopPropagation()} className="ml-2">
+                    <DownloadMenu file={file} />
+                  </div>
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
