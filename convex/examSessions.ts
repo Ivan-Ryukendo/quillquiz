@@ -193,3 +193,36 @@ export const end = mutation({
     return null;
   },
 });
+
+export const getActiveByQuizId = query({
+  args: { quizId: v.id("sharedQuizzes") },
+  returns: v.union(
+    v.object({
+      _id: v.id("examSessions"),
+      roomCode: v.string(),
+      status: v.union(
+        v.literal("lobby"),
+        v.literal("in_progress"),
+        v.literal("paused"),
+        v.literal("completed")
+      ),
+    }),
+    v.null()
+  ),
+  handler: async (ctx, args) => {
+    const session = await ctx.db
+      .query("examSessions")
+      .withIndex("by_quizId", (q) => q.eq("quizId", args.quizId))
+      .filter((q) =>
+        q.or(
+          q.eq(q.field("status"), "lobby"),
+          q.eq(q.field("status"), "in_progress"),
+          q.eq(q.field("status"), "paused")
+        )
+      )
+      .first();
+
+    if (!session) return null;
+    return { _id: session._id, roomCode: session.roomCode, status: session.status };
+  },
+});

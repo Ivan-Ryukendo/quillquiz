@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { getAllQuizFiles, deleteQuizFile } from "@/lib/storage/quiz-store";
 import type { QuizFile } from "@/lib/markdown/types";
 import DownloadMenu from "@/components/DownloadMenu";
+import ShareModal from "@/components/ShareModal";
 
 // Single pass over questions — extracted outside component so it's not recreated on every render
 function countByType(file: QuizFile) {
@@ -22,6 +23,7 @@ export default function LibraryPage() {
   const [files, setFiles] = useState<QuizFile[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+  const [sharingFile, setSharingFile] = useState<QuizFile | null>(null);
 
   useEffect(() => {
     getAllQuizFiles().then((f) => {
@@ -154,6 +156,15 @@ export default function LibraryPage() {
                   >
                     Edit
                   </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSharingFile(file);
+                    }}
+                    className="text-green-500 hover:text-green-700 text-xs ml-2"
+                  >
+                    Share
+                  </button>
                   <div onClick={(e) => e.stopPropagation()} className="ml-2">
                     <DownloadMenu file={file} />
                   </div>
@@ -172,6 +183,9 @@ export default function LibraryPage() {
           );
         })}
       </div>
+      {sharingFile ? (
+        <ShareModal file={sharingFile} onClose={() => setSharingFile(null)} />
+      ) : null}
     </div>
   );
 }
