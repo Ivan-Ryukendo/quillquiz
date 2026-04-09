@@ -57,6 +57,12 @@ export default function LibraryPage() {
     router.push(`/test/configure?files=${ids}`);
   };
 
+  const handleHostLiveExam = () => {
+    if (selected.size === 0) return;
+    const ids = Array.from(selected).join(",");
+    router.push(`/exam/create?files=${ids}`);
+  };
+
   if (loading) return <p className="text-gray-500">Loading...</p>;
 
   if (files.length === 0) {
@@ -91,6 +97,13 @@ export default function LibraryPage() {
             className="px-3 py-1.5 bg-blue-500 text-white rounded-lg text-sm hover:bg-blue-600 disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Start Test ({selected.size} selected)
+          </button>
+          <button
+            onClick={handleHostLiveExam}
+            disabled={selected.size === 0}
+            className="px-3 py-1.5 bg-orange-500 text-white rounded-lg text-sm hover:bg-orange-600 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Host Live Exam
           </button>
         </div>
       </div>
