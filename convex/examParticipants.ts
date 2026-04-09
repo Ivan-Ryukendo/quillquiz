@@ -198,3 +198,48 @@ export const addFlag = mutation({
     return null;
   },
 });
+
+export const getParticipant = query({
+  args: { participantId: v.id("examParticipants") },
+  returns: v.union(
+    v.object({
+      _id: v.id("examParticipants"),
+      examId: v.id("examSessions"),
+      name: v.string(),
+      status: v.union(
+        v.literal("waiting"),
+        v.literal("ready"),
+        v.literal("in_progress"),
+        v.literal("completed"),
+        v.literal("kicked")
+      ),
+      kickReason: v.optional(v.string()),
+    }),
+    v.null()
+  ),
+  handler: async (ctx, args) => {
+    const p = await ctx.db.get(args.participantId);
+    if (!p) return null;
+    return {
+      _id: p._id,
+      examId: p.examId,
+      name: p.name,
+      status: p.status,
+      kickReason: p.kickReason,
+    };
+  },
+});
+
+export const markCompleted = mutation({
+  args: { participantId: v.id("examParticipants") },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const participant = await ctx.db.get(args.participantId);
+    if (!participant) throw new ConvexError("Participant not found");
+    if (participant.status !== "in_progress") {
+      throw new ConvexError("Cannot mark completed from current state");
+    }
+    await ctx.db.patch(args.participantId, { status: "completed" });
+    return null;
+  },
+});
