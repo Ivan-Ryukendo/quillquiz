@@ -246,15 +246,10 @@ export const submitBatch = mutation({
     await ctx.db.patch(args.participantId, { status: "completed" });
 
     if (exam.apiKey) {
-      // gradeExam is defined in convex/examGrading.ts (Task 4)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const gradeExamFn = (internal as any).examGrading?.gradeExam;
-      if (gradeExamFn) {
-        await ctx.scheduler.runAfter(0, gradeExamFn, {
-          examId: args.examId,
-          participantId: args.participantId,
-        });
-      }
+      await ctx.scheduler.runAfter(0, internal.examGrading.gradeExam, {
+        examId: args.examId,
+        participantId: args.participantId,
+      });
     }
 
     return null;
