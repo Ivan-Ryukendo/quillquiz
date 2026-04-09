@@ -111,8 +111,8 @@ export default function JoinPage() {
     );
   }
 
-  // Not found / expired
-  if (sharedQuiz === null) {
+  // Not found / expired (or still undefined after PIN flow)
+  if (!sharedQuiz) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh] text-center px-4">
         <div className="text-4xl mb-4">🔗</div>
