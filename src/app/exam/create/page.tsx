@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useConvexAuth } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -19,7 +19,7 @@ const PROCTORING_DESCRIPTIONS: Record<ProctoringLevel, string> = {
     "Deterrent model — every violation loudly visible to teacher with timestamps and durations.",
 };
 
-export default function ExamCreatePage() {
+function ExamCreatePageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
@@ -331,5 +331,17 @@ export default function ExamCreatePage() {
         </button>
       </div>
     </div>
+  );
+}
+
+export default function ExamCreatePage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    }>
+      <ExamCreatePageInner />
+    </Suspense>
   );
 }
