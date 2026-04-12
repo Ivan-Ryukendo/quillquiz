@@ -8,6 +8,9 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Flag } from "lucide-react";
 import type { Id } from "@/convex/_generated/dataModel";
+import { startProctoring, stopProctoring } from "@/lib/proctoring/orchestrator";
+import { ProctorWarning } from "@/components/ProctorWarning";
+import type { ProctorFlag } from "@/lib/proctoring/types";
 
 const MAX_LENGTH = { short: 500, long: 5000 } as const;
 
@@ -47,6 +50,7 @@ export default function ExamTestPage() {
   );
 
   const submitBatch = useMutation(api.examAnswers.submitBatch);
+  const addFlag = useMutation(api.examParticipants.addFlag);
 
   const [textAnswers, setTextAnswers] = useState<Record<string, string>>({});
   const [mcqSelections, setMcqSelections] = useState<Record<string, number[]>>({});
@@ -56,6 +60,8 @@ export default function ExamTestPage() {
   const [submitted, setSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [dismissedMessageId, setDismissedMessageId] = useState<string | null>(null);
+  const [localFlags, setLocalFlags] = useState<ProctorFlag[]>([]);
+  const [forcePaused, setForcePaused] = useState(false);
 
   const questionRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const hasAutoSubmitted = useRef(false);
@@ -124,6 +130,41 @@ export default function ExamTestPage() {
       return () => clearTimeout(t);
     }
   }, [timeLeft, handleSubmitAll]);
+
+  // Start/stop proctoring when exam is in_progress
+  useEffect(() => {
+    if (!examDetail || examDetail.status !== "in_progress" || !participantId) return;
+
+    const level = examDetail.settings.proctoringLevel ?? "standard";
+
+    const handleFullscreenReturn = () => {
+      if (document.fullscreenElement) {
+        setForcePaused(false);
+      }
+    };
+    document.addEventListener("fullscreenchange", handleFullscreenReturn);
+
+    startProctoring({
+      level,
+      onFlag: (flag) => {
+        setLocalFlags((prev) => [...prev, flag]);
+        // Report to Convex (fire-and-forget)
+        addFlag({
+          participantId,
+          type: flag.type,
+          details: flag.details,
+        }).catch(() => {/* ignore */});
+      },
+      onPause: () => setForcePaused(true),
+    });
+
+    return () => {
+      stopProctoring();
+      document.removeEventListener("fullscreenchange", handleFullscreenReturn);
+    };
+  // Intentionally omit addFlag/examDetail to avoid re-running on every query update
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [examDetail?.status, examDetail?.settings.proctoringLevel, participantId]);
 
   const toggleFlag = (id: string) => {
     setFlagged((prev) => {
@@ -208,11 +249,15 @@ export default function ExamTestPage() {
   return (
     <div className="max-w-2xl mx-auto pb-24">
       {/* Pause overlay */}
-      {isPaused ? (
+      {isPaused || forcePaused ? (
         <div className="fixed inset-0 bg-black/80 flex flex-col items-center justify-center z-40 text-white text-center">
-          <h1 className="text-2xl font-bold mb-2">Exam Paused</h1>
+          <h1 className="text-2xl font-bold mb-2">
+            {forcePaused ? "Return to fullscreen to continue" : "Exam Paused"}
+          </h1>
           <p className="text-gray-300 text-sm">
-            Your teacher has paused the exam. Please wait.
+            {forcePaused
+              ? "Press F11 or click to re-enter fullscreen."
+              : "Your teacher has paused the exam. Please wait."}
           </p>
         </div>
       ) : null}
@@ -259,7 +304,7 @@ export default function ExamTestPage() {
       </div>
 
       {/* Question cards */}
-      <div className="space-y-6">
+      <div className="space-y-6 select-none">
         {questions.map((question, index) => {
           const isFlagged = flagged.has(question.id);
           const selections = mcqSelections[question.id] ?? [];
@@ -361,6 +406,8 @@ export default function ExamTestPage() {
           );
         })}
       </div>
+
+      <ProctorWarning flags={localFlags} />
 
       {/* Submit section */}
       <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-2xl px-4">
