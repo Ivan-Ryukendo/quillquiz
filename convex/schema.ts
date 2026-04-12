@@ -56,6 +56,36 @@ export default defineSchema({
     startedAt: v.optional(v.number()),
     endedAt: v.optional(v.number()),
     createdAt: v.number(),
+    // New optional fields:
+    apiKey: v.optional(v.string()),
+    extraTimeMs: v.optional(v.number()),
+    questions: v.optional(
+      v.array(
+        v.object({
+          id: v.string(),
+          text: v.string(),
+          type: v.union(v.literal("mcq"), v.literal("short"), v.literal("long")),
+          body: v.optional(v.string()),
+          options: v.optional(v.array(v.object({ text: v.string() }))),
+        })
+      )
+    ),
+    correctAnswers: v.optional(
+      v.array(
+        v.object({
+          questionId: v.string(),
+          correctOptions: v.array(v.number()),
+        })
+      )
+    ),
+    referenceAnswers: v.optional(
+      v.array(
+        v.object({
+          questionId: v.string(),
+          referenceAnswer: v.string(),
+        })
+      )
+    ),
   })
     .index("by_roomCode", ["roomCode"])
     .index("by_creatorId", ["creatorId"])
@@ -97,6 +127,12 @@ export default defineSchema({
     selectedOptions: v.optional(v.array(v.number())),
     textAnswer: v.optional(v.string()),
     submittedAt: v.number(),
+    // New grade fields:
+    isCorrect: v.optional(v.boolean()),
+    aiScore: v.optional(v.number()),
+    aiFeedback: v.optional(v.string()),
+    keyMissing: v.optional(v.array(v.string())),
+    gradedAt: v.optional(v.number()),
   })
     .index("by_examId", ["examId"])
     .index("by_participantId", ["participantId"])

@@ -21,6 +21,34 @@ export const create = mutation({
   args: {
     quizId: v.id("sharedQuizzes"),
     settings: examSettingsValidator,
+    apiKey: v.optional(v.string()),
+    questions: v.optional(
+      v.array(
+        v.object({
+          id: v.string(),
+          text: v.string(),
+          type: v.union(v.literal("mcq"), v.literal("short"), v.literal("long")),
+          body: v.optional(v.string()),
+          options: v.optional(v.array(v.object({ text: v.string() }))),
+        })
+      )
+    ),
+    correctAnswers: v.optional(
+      v.array(
+        v.object({
+          questionId: v.string(),
+          correctOptions: v.array(v.number()),
+        })
+      )
+    ),
+    referenceAnswers: v.optional(
+      v.array(
+        v.object({
+          questionId: v.string(),
+          referenceAnswer: v.string(),
+        })
+      )
+    ),
   },
   returns: v.object({
     id: v.id("examSessions"),
@@ -44,6 +72,11 @@ export const create = mutation({
       settings: args.settings,
       roomCode,
       createdAt: now,
+      apiKey: args.apiKey,
+      extraTimeMs: 0,
+      questions: args.questions,
+      correctAnswers: args.correctAnswers,
+      referenceAnswers: args.referenceAnswers,
     });
 
     return { id, roomCode };
@@ -224,5 +257,129 @@ export const getActiveByQuizId = query({
 
     if (!session) return null;
     return { _id: session._id, roomCode: session.roomCode, status: session.status };
+  },
+});
+
+export const addExtraTime = mutation({
+  args: {
+    examId: v.id("examSessions"),
+    extraMinutes: v.number(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const { exam } = await requireExamCreator(ctx, args.examId);
+
+    if (exam.status === "completed") {
+      throw new ConvexError("Cannot add time to a completed exam");
+    }
+    if (!Number.isInteger(args.extraMinutes) || args.extraMinutes < 1 || args.extraMinutes > 120) {
+      throw new ConvexError("Extra time must be a whole number between 1 and 120 minutes");
+    }
+
+    const current = exam.extraTimeMs ?? 0;
+    await ctx.db.patch(args.examId, {
+      extraTimeMs: current + args.extraMinutes * 60 * 1000,
+    });
+    return null;
+  },
+});
+
+export const getForStudent = query({
+  args: { examId: v.id("examSessions") },
+  returns: v.union(
+    v.object({
+      _id: v.id("examSessions"),
+      status: v.union(
+        v.literal("lobby"),
+        v.literal("in_progress"),
+        v.literal("paused"),
+        v.literal("completed")
+      ),
+      settings: v.object({
+        timeLimit: v.optional(v.number()),
+        allowLateJoins: v.boolean(),
+        proctoringLevel: v.union(
+          v.literal("standard"),
+          v.literal("aggressive"),
+          v.literal("visibility")
+        ),
+        enforceLogin: v.boolean(),
+      }),
+      roomCode: v.string(),
+      startedAt: v.optional(v.number()),
+      extraTimeMs: v.optional(v.number()),
+      questions: v.optional(
+        v.array(
+          v.object({
+            id: v.string(),
+            text: v.string(),
+            type: v.union(v.literal("mcq"), v.literal("short"), v.literal("long")),
+            body: v.optional(v.string()),
+            options: v.optional(v.array(v.object({ text: v.string() }))),
+          })
+        )
+      ),
+    }),
+    v.null()
+  ),
+  handler: async (ctx, args) => {
+    const exam = await ctx.db.get(args.examId);
+    if (!exam) return null;
+
+    return {
+      _id: exam._id,
+      status: exam.status,
+      settings: {
+        timeLimit: exam.settings.timeLimit,
+        allowLateJoins: exam.settings.allowLateJoins,
+        proctoringLevel: exam.settings.proctoringLevel,
+        enforceLogin: exam.settings.enforceLogin,
+      },
+      roomCode: exam.roomCode,
+      startedAt: exam.startedAt,
+      extraTimeMs: exam.extraTimeMs,
+      questions: exam.questions,
+    };
+  },
+});
+
+export const getForTeacher = query({
+  args: { examId: v.id("examSessions") },
+  returns: v.union(
+    v.object({
+      _id: v.id("examSessions"),
+      creatorId: v.id("users"),
+      quizId: v.id("sharedQuizzes"),
+      status: v.union(
+        v.literal("lobby"),
+        v.literal("in_progress"),
+        v.literal("paused"),
+        v.literal("completed")
+      ),
+      settings: examSettingsValidator,
+      roomCode: v.string(),
+      startedAt: v.optional(v.number()),
+      endedAt: v.optional(v.number()),
+      createdAt: v.number(),
+      extraTimeMs: v.optional(v.number()),
+    }),
+    v.null()
+  ),
+  handler: async (ctx, args) => {
+    const exam = await ctx.db.get(args.examId);
+    if (!exam) return null;
+
+    return {
+      _id: exam._id,
+      creatorId: exam.creatorId,
+      quizId: exam.quizId,
+      status: exam.status,
+      settings: exam.settings,
+      roomCode: exam.roomCode,
+      startedAt: exam.startedAt,
+      endedAt: exam.endedAt,
+      createdAt: exam.createdAt,
+      extraTimeMs: exam.extraTimeMs,
+    };
   },
 });

@@ -10,6 +10,7 @@
 
 import type * as auth from "../auth.js";
 import type * as examAnswers from "../examAnswers.js";
+import type * as examGrading from "../examGrading.js";
 import type * as examMessages from "../examMessages.js";
 import type * as examParticipants from "../examParticipants.js";
 import type * as examSessions from "../examSessions.js";
@@ -30,6 +31,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   examAnswers: typeof examAnswers;
+  examGrading: typeof examGrading;
   examMessages: typeof examMessages;
   examParticipants: typeof examParticipants;
   examSessions: typeof examSessions;
