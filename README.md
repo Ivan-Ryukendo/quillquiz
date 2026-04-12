@@ -10,10 +10,12 @@ Write your study material in markdown. Drop it in. QuillQuiz parses it into a fu
 
 ## What it does
 
-- Upload `.md` files, PDFs, or images
-- They become interactive quizzes automatically
-- MCQ answers are checked instantly; written answers are graded by AI with score + feedback
-- Everything is stored in your browser — no account, no server, no data leaving your device (except AI grading calls)
+- Upload `.md` files, PDFs, or images — they become interactive quizzes automatically
+- MCQ answers checked instantly; written answers graded by AI with score + feedback
+- **Share quizzes** via a 6-character code or QR code — anyone can add them to their library
+- **Host live exams** — real-time teacher dashboard, student lobby, synchronized timer, server-side MCQ grading, AI grading with your stored API key
+- **Anti-cheat proctoring** — three levels (standard / aggressive / visibility): fullscreen enforcement, tab-switch detection, clipboard blocking, devtools detection, real-time flag reporting to teacher
+- Everything stored in your browser — no account needed for solo use (live exams require Convex auth)
 
 ---
 
