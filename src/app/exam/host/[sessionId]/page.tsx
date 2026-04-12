@@ -13,13 +13,30 @@ import {
   StopCircle,
   MessageSquare,
   Clock,
-  Flag,
   Copy,
   Check,
+  Eye,
+  Clipboard,
+  Monitor,
+  Code,
 } from "lucide-react";
 import type { Id } from "@/convex/_generated/dataModel";
 
 type Phase = "lobby" | "in_progress" | "paused" | "completed";
+
+function getFlagIcon(type: string): "eye" | "clipboard" | "monitor" | "code" {
+  if (type === "tab_switch" || type === "window_blur") return "eye";
+  if (
+    type === "copy_attempt" ||
+    type === "paste_attempt" ||
+    type === "cut_attempt" ||
+    type === "keyboard_shortcut" ||
+    type === "right_click"
+  )
+    return "clipboard";
+  if (type === "fullscreen_exit") return "monitor";
+  return "code";
+}
 
 export default function HostDashboardPage() {
   const { sessionId } = useParams<{ sessionId: string }>();
@@ -155,8 +172,12 @@ export default function HostDashboardPage() {
         p.status === "in_progress" ||
         p.status === "completed"
     ).length ?? 0;
-  const activeParticipants =
-    participants?.filter((p) => p.status !== "kicked") ?? [];
+  const activeParticipants = [...(participants?.filter((p) => p.status !== "kicked") ?? [])].sort(
+    (a, b) =>
+      (phase === "in_progress" || phase === "paused")
+        ? (b.flags?.length ?? 0) - (a.flags?.length ?? 0)
+        : 0
+  );
 
   const answerCountByParticipant: Record<string, number> = {};
   if (allAnswers) {
@@ -420,13 +441,38 @@ export default function HostDashboardPage() {
                           </span>
                         ) : null}
                         {flagCount > 0 ? (
-                          <span
-                            className="flex items-center gap-0.5 text-xs text-amber-500"
-                            title={p.flags.map((f: { type: string; details: string }) => `${f.type}: ${f.details}`).join("\n")}
-                          >
-                            <Flag className="w-3 h-3" />
-                            {flagCount}
-                          </span>
+                          <div className="flex items-center gap-1">
+                            {(() => {
+                              const eyeCount = p.flags.filter((f: { type: string }) => getFlagIcon(f.type) === "eye").length;
+                              const clipCount = p.flags.filter((f: { type: string }) => getFlagIcon(f.type) === "clipboard").length;
+                              const monCount = p.flags.filter((f: { type: string }) => getFlagIcon(f.type) === "monitor").length;
+                              const codeCount = p.flags.filter((f: { type: string }) => getFlagIcon(f.type) === "code").length;
+                              return (
+                                <>
+                                  {eyeCount > 0 ? (
+                                    <span className="flex items-center gap-0.5 text-xs text-amber-500" title={`${eyeCount} visibility`}>
+                                      <Eye className="w-3 h-3" />{eyeCount}
+                                    </span>
+                                  ) : null}
+                                  {clipCount > 0 ? (
+                                    <span className="flex items-center gap-0.5 text-xs text-orange-500" title={`${clipCount} clipboard`}>
+                                      <Clipboard className="w-3 h-3" />{clipCount}
+                                    </span>
+                                  ) : null}
+                                  {monCount > 0 ? (
+                                    <span className="flex items-center gap-0.5 text-xs text-blue-500" title={`${monCount} fullscreen`}>
+                                      <Monitor className="w-3 h-3" />{monCount}
+                                    </span>
+                                  ) : null}
+                                  {codeCount > 0 ? (
+                                    <span className="flex items-center gap-0.5 text-xs text-red-500" title={`${codeCount} devtools`}>
+                                      <Code className="w-3 h-3" />{codeCount}
+                                    </span>
+                                  ) : null}
+                                </>
+                              );
+                            })()}
+                          </div>
                         ) : null}
                         {p.status !== "completed" &&
                         p.status !== "kicked" &&
